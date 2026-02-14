@@ -7,7 +7,7 @@ A beautiful animated visualization of the mathematical heart curve:
 
     y = |x|^(2/3) + 0.9 · sin(kx) · √(3 − x²)
 
-As k increases from 0 to 29.32, a simple arch transforms
+As k increases from 0 to 50, a simple arch transforms
 into a stunning, oscillating heart shape.
 
 Created with love by Prof. Shahab Anbarjafari
@@ -33,6 +33,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from matplotlib.patches import FancyBboxPatch
 import matplotlib.patheffects as path_effects
 import itertools
 import sys
@@ -50,11 +51,12 @@ class ValentineHeart:
     """
 
     # ─── My animation parameters ─────────────────────────────────────
-    K_FINAL = 29.32           # I found this k value creates the perfect heart
+    K_FINAL = 50              # I push k all the way to 50 for a richly detailed heart
     NUM_POINTS = 3000         # I want my curve silky smooth
-    BUILD_FRAMES = 88         # I build the heart over this many frames
+    BUILD_FRAMES = 100        # I build the heart over this many frames
     PULSE_FRAMES = 60         # I pulse the completed heart for this many frames
-    INITIAL_FPS = 3           # I start at 3 FPS as requested
+    INITIAL_FPS = 3           # I start the heart animation at 3 FPS as requested
+    SPLASH_FPS = 15           # I use a smoother FPS for the splash screen button glow
 
     # ─── My color palette — dark romantic aesthetic ──────────────────
     COLORS = {
@@ -70,6 +72,13 @@ class ValentineHeart:
         'info':         '#444444',  # Dim text for the controls hint
         'credit':       '#333333',  # Very subtle credit text
         'message':      '#ff6e7f',  # Warm pink for the final message
+        'btn_face':     '#cc1133',  # Rich red for the start button
+        'btn_hover':    '#ff2255',  # Brighter red when hovering the button
+        'btn_glow':     '#ff1744',  # Glow halo around the start button
+        'btn_edge':     '#ff4466',  # Button border color
+        'btn_text':     '#ffffff',  # White text on the button
+        'splash_sub':   '#ff6e7f',  # Warm pink for the splash subtitle
+        'splash_hint':  '#555555',  # Dim hint text on splash screen
     }
 
     def __init__(self):
@@ -85,11 +94,15 @@ class ValentineHeart:
         self._frame = 0
         self._paused = False
         self._fps = self.INITIAL_FPS
-        self._completed = False  # I flip this when the build phase finishes
+        self._completed = False   # I flip this when the build phase finishes
+        self._started = False     # I wait for the user to press Start
+        self._splash_tick = 0     # I use this to pulse the start button
+        self._hovering_btn = False  # I track whether the mouse is over the button
 
         # I build all visual elements
         self._create_figure()
         self._create_plot_elements()
+        self._create_start_screen()
         self._connect_events()
 
     # ═══════════════════════════════════════════════════════════════
@@ -107,7 +120,7 @@ class ValentineHeart:
         The √(3 − x²) term constrains everything within the domain.
 
         Parameters:
-            k         : Controls oscillation frequency (0 → 29.32)
+            k         : Controls oscillation frequency (0 → 50)
             amplitude : Wave amplitude (default 0.9, I modulate it for pulsing)
 
         Returns:
@@ -307,9 +320,153 @@ class ValentineHeart:
             va='bottom',
         )
 
+    # ═══════════════════════════════════════════════════════════════
+    #  Start Screen
+    # ═══════════════════════════════════════════════════════════════
+
+    def _create_start_screen(self):
+        """
+        I create a beautiful splash screen with a glowing Start
+        button so the user can begin the animation when they're ready.
+        The button pulses with a soft neon glow to invite a click.
+        """
+        # I keep a list of all splash-only elements so I can
+        # cleanly remove them when the animation starts.
+        self._splash_elements = []
+
+        # ─── Romantic subtitle beneath the title ─────────────────
+        sub = self.fig.text(
+            0.5, 0.87,
+            'A Mathematical Love Letter',
+            fontsize=15,
+            fontfamily='serif',
+            fontstyle='italic',
+            color=self.COLORS['splash_sub'],
+            ha='center',
+            va='center',
+            alpha=0.85,
+        )
+        self._splash_elements.append(sub)
+
+        # ─── Start Button — Outer Glow Halo ──────────────────────
+        # I draw a slightly larger, soft-edged rectangle behind
+        # the button to create the characteristic neon glow.
+        glow_w, glow_h = 0.28, 0.10
+        self._btn_glow = FancyBboxPatch(
+            (0.5 - glow_w / 2, 0.46 - glow_h / 2),
+            glow_w, glow_h,
+            boxstyle='round,pad=0.025',
+            facecolor=self.COLORS['btn_glow'],
+            edgecolor='none',
+            alpha=0.12,
+            transform=self.fig.transFigure,
+            zorder=9,
+        )
+        self.fig.patches.append(self._btn_glow)
+        self._splash_elements.append(self._btn_glow)
+
+        # ─── Start Button — Main Body ────────────────────────────
+        # I use a FancyBboxPatch with rounded corners for that
+        # modern, pill-shaped button look.
+        btn_w, btn_h = 0.22, 0.07
+        self._btn_patch = FancyBboxPatch(
+            (0.5 - btn_w / 2, 0.46 - btn_h / 2),
+            btn_w, btn_h,
+            boxstyle='round,pad=0.018',
+            facecolor=self.COLORS['btn_face'],
+            edgecolor=self.COLORS['btn_edge'],
+            linewidth=2,
+            alpha=0.95,
+            transform=self.fig.transFigure,
+            zorder=10,
+        )
+        self.fig.patches.append(self._btn_patch)
+        self._splash_elements.append(self._btn_patch)
+
+        # ─── Start Button — Label ────────────────────────────────
+        btn_label = self.fig.text(
+            0.5, 0.46,
+            '♥   S t a r t',
+            fontsize=21,
+            fontweight='bold',
+            color=self.COLORS['btn_text'],
+            ha='center',
+            va='center',
+            zorder=11,
+            path_effects=[
+                path_effects.withStroke(
+                    linewidth=2,
+                    foreground='#aa0022',
+                ),
+                path_effects.Normal(),
+            ],
+        )
+        self._splash_elements.append(btn_label)
+
+        # ─── Hint text below the button ──────────────────────────
+        hint = self.fig.text(
+            0.5, 0.39,
+            'click the button to begin the magic',
+            fontsize=10,
+            fontstyle='italic',
+            color=self.COLORS['splash_hint'],
+            ha='center',
+            va='center',
+        )
+        self._splash_elements.append(hint)
+
+    def _remove_start_screen(self):
+        """
+        I cleanly remove all splash screen elements so the
+        animation canvas is clear and ready to draw the heart.
+        """
+        for element in self._splash_elements:
+            # Patches live in fig.patches, text lives in fig.texts
+            if isinstance(element, FancyBboxPatch):
+                if element in self.fig.patches:
+                    self.fig.patches.remove(element)
+            else:
+                element.remove()
+        self._splash_elements.clear()
+
+    def _is_over_button(self, event):
+        """
+        I check whether the mouse cursor is inside the start
+        button area. I use figure-coordinate hit testing.
+        """
+        if event.x is None or event.y is None:
+            return False
+        # I convert pixel coordinates to figure-relative [0, 1]
+        fig_xy = self.fig.transFigure.inverted().transform(
+            (event.x, event.y)
+        )
+        fx, fy = fig_xy
+        # My button is centered at (0.5, 0.46) with size (0.22, 0.07)
+        return (0.5 - 0.13) <= fx <= (0.5 + 0.13) and \
+               (0.46 - 0.045) <= fy <= (0.46 + 0.045)
+
+    def _start_animation(self):
+        """
+        I am called when the user clicks Start. I tear down the
+        splash screen and kick off the heart-building animation.
+        """
+        self._started = True
+        self._remove_start_screen()
+
+        # I switch from the smooth splash FPS to the requested 3 FPS
+        if hasattr(self, '_anim') and self._anim.event_source:
+            self._anim.event_source.interval = 1000 // self._fps
+
+        self.fig.canvas.draw_idle()
+
     def _connect_events(self):
-        """I wire up keyboard events so the user can interact with me."""
+        """
+        I wire up keyboard, mouse click, and mouse motion events
+        so the user can interact with me at every stage.
+        """
         self.fig.canvas.mpl_connect('key_press_event', self._on_key_press)
+        self.fig.canvas.mpl_connect('button_press_event', self._on_click)
+        self.fig.canvas.mpl_connect('motion_notify_event', self._on_motion)
 
     # ═══════════════════════════════════════════════════════════════
     #  Animation Engine
@@ -318,11 +475,26 @@ class ValentineHeart:
     def _update(self, _tick):
         """
         I am called once per frame by matplotlib's animation system.
-        I decide what to draw based on which phase I'm in:
+        I handle three distinct phases:
 
-            Phase 1 (Building) : k ramps from 0 → 29.32 with easing
-            Phase 2 (Pulsing)  : k stays at 29.32, gentle breathing
+            Splash   : Pulsing Start button, waiting for user
+            Building : k ramps from 0 → 50 with cinematic easing
+            Pulsing  : k = 50, gentle breathing effect
         """
+        # ─── Splash Screen Phase ─────────────────────────────────
+        # If the user hasn't clicked Start yet, I just pulse the
+        # button glow to make it feel alive and inviting.
+        if not self._started:
+            self._splash_tick += 1
+            # I create a smooth sine pulse for the glow intensity
+            pulse = 0.08 + 0.14 * np.sin(
+                2.0 * np.pi * self._splash_tick / 30.0
+            )
+            self._btn_glow.set_alpha(max(0.0, pulse))
+            self.fig.canvas.draw_idle()
+            return
+
+        # ─── Paused State ────────────────────────────────────────
         # If I'm paused, I do nothing — the display freezes in place
         if self._paused:
             return
@@ -390,11 +562,51 @@ class ValentineHeart:
     #  Interactivity
     # ═══════════════════════════════════════════════════════════════
 
+    def _on_click(self, event):
+        """
+        I handle mouse clicks. Before the animation starts, I check
+        if the user clicked my beautiful Start button.
+        """
+        if not self._started:
+            if self._is_over_button(event):
+                self._start_animation()
+
+    def _on_motion(self, event):
+        """
+        I handle mouse movement to create a hover effect on the
+        Start button — it brightens when the cursor is over it,
+        making it feel responsive and inviting.
+        """
+        if not self._started:
+            over = self._is_over_button(event)
+            if over and not self._hovering_btn:
+                # I light up the button when the mouse enters
+                self._hovering_btn = True
+                self._btn_patch.set_facecolor(self.COLORS['btn_hover'])
+                self._btn_patch.set_alpha(1.0)
+                self._btn_patch.set_linewidth(2.5)
+                self.fig.canvas.draw_idle()
+            elif not over and self._hovering_btn:
+                # I dim the button back to normal when the mouse leaves
+                self._hovering_btn = False
+                self._btn_patch.set_facecolor(self.COLORS['btn_face'])
+                self._btn_patch.set_alpha(0.95)
+                self._btn_patch.set_linewidth(2.0)
+                self.fig.canvas.draw_idle()
+
     def _on_key_press(self, event):
         """
         I handle keyboard input to make the experience interactive.
         Because what's a Valentine without a bit of interactivity?
         """
+        # If we're on the splash screen, Enter or Space can also start
+        if not self._started:
+            if event.key in (' ', 'enter'):
+                self._start_animation()
+            elif event.key in ('q', 'escape'):
+                plt.close('all')
+            return
+
         if event.key == ' ':
             # I toggle pause / resume
             self._paused = not self._paused
@@ -445,17 +657,20 @@ class ValentineHeart:
 
     def run(self):
         """
-        I start the show! This launches the matplotlib window and
-        begins the animation loop at 3 FPS. The user can adjust
-        the speed anytime with the UP/DOWN arrow keys.
+        I start the show! The window opens with a beautiful Start
+        button. Once the user clicks it, the heart animation begins
+        at 3 FPS. Speed is adjustable with UP/DOWN arrow keys.
         """
+        # I start the timer at the splash-screen FPS so the
+        # button glow pulses smoothly. When the user clicks Start,
+        # I switch to the requested 3 FPS for the heart animation.
         self._anim = FuncAnimation(
             self.fig,
             self._update,
-            frames=itertools.count(),    # I generate frames forever
-            interval=1000 // self._fps,  # ~333 ms per frame at 3 FPS
-            blit=False,                  # I need full redraws for text updates
-            cache_frame_data=False,      # I don't need frame caching
+            frames=itertools.count(),       # I generate frames forever
+            interval=1000 // self.SPLASH_FPS,  # Smooth splash pulsing
+            blit=False,                     # I need full redraws for text updates
+            cache_frame_data=False,         # I don't need frame caching
         )
 
         # I show the window — this blocks until the user closes it
@@ -477,10 +692,11 @@ if __name__ == '__main__':
     print("  ║   Contact: shb@3sholding.com                         ║")
     print("  ║                                                       ║")
     print("  ║   Controls:                                           ║")
-    print("  ║     SPACE ···· Pause / Resume                         ║")
-    print("  ║     R ········ Restart animation                      ║")
-    print("  ║     ↑ / ↓ ··· Speed up / slow down                   ║")
-    print("  ║     Q / ESC ·· Quit                                   ║")
+    print("  ║     START ··· Click the button or press SPACE/ENTER   ║")
+    print("  ║     SPACE ··· Pause / Resume                          ║")
+    print("  ║     R ······· Restart animation                       ║")
+    print("  ║     ↑ / ↓ ·· Speed up / slow down                    ║")
+    print("  ║     Q / ESC · Quit                                    ║")
     print("  ╚═══════════════════════════════════════════════════════╝")
     print()
 

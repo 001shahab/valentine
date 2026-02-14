@@ -10,10 +10,11 @@ A stunning animated visualization of the mathematical heart curve, built entirel
 
 $$y = |x|^{2/3} + 0.9 \cdot \sin(kx) \cdot \sqrt{3 - x^2}$$
 
-As **k** increases from `0` to `29.32`, a simple mathematical arch transforms into a beautiful, oscillating heart shape. The animation renders this transformation at **3 FPS** with cinematic easing, and the completed heart gently "breathes" with a subtle pulsing effect.
+As **k** increases from `0` to `50`, a simple mathematical arch transforms into a beautiful, oscillating heart shape. The animation renders this transformation at **3 FPS** with cinematic easing, and the completed heart gently "breathes" with a subtle pulsing effect.
 
 ## Features
 
+- **Beautiful Start screen** — a glowing, animated Start button greets you when the window opens; the animation begins only when you're ready
 - **Neon glow effect** — the heart curve is rendered with three overlapping layers to create a soft, glowing aesthetic
 - **Cinematic easing** — the build-up uses Hermite interpolation (`3t² − 2t³`) for a dramatic slow-start, fast-middle, slow-end feel
 - **Interactive controls** — pause, resume, restart, and adjust the animation speed on the fly
@@ -50,7 +51,7 @@ pip install -r requirements.txt
 python valentine.py
 ```
 
-A window will open and the heart will begin to form, one frame at a time.
+A window will open with a beautiful Start screen. Click the **♥ Start** button (or press `SPACE` / `ENTER`) and the heart will begin to form, one frame at a time.
 
 ## Controls
 
@@ -76,7 +77,7 @@ where `x ∈ [−√3, √3]` (the domain where `3 − x² ≥ 0`).
 - **`sin(kx)`** — adds oscillations whose frequency is controlled by `k`
 - **`√(3 − x²)`** — acts as an envelope that constrains the curve within the valid domain
 
-When `k = 0`, you see a simple U-shaped arch. As `k` increases toward `29.32`, the oscillations sculpt the arch into a recognizable heart shape.
+When `k = 0`, you see a simple U-shaped arch. As `k` increases toward `50`, the oscillations sculpt the arch into a richly detailed heart shape.
 
 The animation uses **smooth easing** (`f(t) = 3t² − 2t³`) so the build-up starts gently, accelerates through the middle, and decelerates at the end — giving it a cinematic quality even at 3 FPS.
 
